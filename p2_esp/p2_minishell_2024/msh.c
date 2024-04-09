@@ -192,7 +192,7 @@ int main(int argc, char* argv[])
             command_counter = read_command(&argvv, filev, &in_background); //NORMAL MODE
     }
 		//************************************************************************************************
-
+        
 
 		/************************ STUDENTS CODE ********************************/
 	   if (command_counter > 0) {
@@ -201,10 +201,51 @@ int main(int argc, char* argv[])
 			}
 			else {
 				// Print command
-				print_command(argvv, filev, in_background);
+				//print_command(argvv, filev, in_background);
+                /*int status;
+                int pid = fork();
+                if (pid==0){
+                    execvp(argvv[0][0], argvv[0]);}
+                else{
+                    wait(&status);
+                
+                }*/
+                int status;
+                int p1[2];
+                pipe(p1);
+                int pid;
+                pid = fork();
+                switch (pid)
+                {
+                case -1:
+                    printf("Error");
+                    break;
+                case 0:
+                    int pid2;
+                    pid2 = fork();
+                    switch (pid2)
+                    {
+                    case 0:
+                        close(1);
+                        dup(p1[1]);
+                        close(p1[1]);
+                        close(p1[0]);
+                        execvp(argvv[1][0], argvv[1]);
+                        exit(0);
+                    default:
+                        
+                        close(0);
+                        dup(p1[0]);
+                        close(p1[0]);
+                        close(p1[1]);
+                        execvp(argvv[0][0], argvv[0]);
+                        exit(1);
+                    }
+                default:
+                    wait(&status);
+                    }
 			}
 		}
 	}
-	
 	return 0;
 }
