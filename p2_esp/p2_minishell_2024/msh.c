@@ -33,7 +33,6 @@ void siginthandler(int param)
 }
 
 /* myhistory */
-
 void mycalc(char ***argvv, int accum) {
     // Verificar si el comando es mycalc
     if (strcmp(argvv[0][0], "mycalc") == 0) {
@@ -85,8 +84,28 @@ void mycalc(char ***argvv, int accum) {
         }
     }
 }
-
 /* myhistory */
+
+
+void myhistory(struct command *history, int history_size, int tail) {
+    printf("Command History:\n");
+    int i = tail;
+    int count = 0;
+    while (count < history_size) {
+        if (history[i].argvv != NULL) {
+            printf("[%d] ", count);
+            for (int j = 0; j < history[i].num_commands; j++) {
+                for (int k = 0; k < history[i].args[j]; k++) {
+                    printf("%s ", history[i].argvv[j][k]);
+                }
+                printf(" | ");
+            }
+            printf("\n");
+        }
+        count++;
+        i = (i + 1) % history_size;
+    }
+}
 
 struct command
 {
