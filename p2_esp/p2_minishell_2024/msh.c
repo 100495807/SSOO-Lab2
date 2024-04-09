@@ -87,7 +87,7 @@ void mycalc(char ***argvv, int accum) {
 /* myhistory */
 
 
-void myhistory(struct command *history, int history_size, int tail) {
+/*void myhistory(struct command *history, int history_size, int tail) {
     printf("Command History:\n");
     int i = tail;
     int count = 0;
@@ -105,7 +105,8 @@ void myhistory(struct command *history, int history_size, int tail) {
         count++;
         i = (i + 1) % history_size;
     }
-}
+}*/
+
 
 struct command
 {
