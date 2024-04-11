@@ -38,8 +38,8 @@ void siginthandler(int param)
 int contador;
 
 /* myhistory */
-int accum;
-void mycalc(char ***argvv, int accum) {
+int accum = 0;
+void mycalc(char ***argvv) {
     // Verificar si el comando es mycalc
     if (strcmp(argvv[0][0], "mycalc") == 0) {
         // Verificar si se proporcionan los tres argumentos requeridos
@@ -56,7 +56,7 @@ void mycalc(char ***argvv, int accum) {
                 result = op1 + op2;
                 accum += result;
                 // Crear el mensaje de salida
-                sprintf(buf, "[OK] %d + %d = %d; Acc %d\n", op1, op2, result, result);
+                sprintf(buf, "[OK] %d + %d = %d; Acc %d\n", op1, op2, result, accum);
             } 
             else if (strcmp(operator, "mul") == 0) {
                 // Multiplicación: multiplicar operandos
@@ -380,10 +380,10 @@ int main(int argc, char* argv[])
 
                     /* EJECUTAR EL COMANDO ACTUAL */
                     /* COMANDOS INTERNOS */
-                    if (strcmp(argvv[comando_act][0], "mycalc") == 0){
+                    if (strcmp(argvv[0][0], "mycalc") == 0){
                         /* ejecutar mycalc */
-                        mycalc(argvv, accum);
-                        exit(0);
+                        mycalc(argvv);
+                        continue;
                     } 
                     else if (strcmp(argvv[0][0],"myhistory")==0) {    
                         // Manejar el comando "myhistory"
