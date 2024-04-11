@@ -1,3 +1,11 @@
+//---------------------------------------------------------------------------------------------------------------------------------------------------------------
+//---------------------------------------------------------------------------------------------------------------------------------------------------------------
+//---------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+
+
+
 //P2-SSOO-23/24
 
 //  MSH main file
@@ -18,7 +26,7 @@
 
 #define MAX_COMMANDS 8
 
-int accum = 0;
+
 // files in case of redirection
 char filev[3][64];
 
@@ -33,6 +41,7 @@ void siginthandler(int param)
 }
 
 /* myhistory */
+int accum;
 void mycalc(char ***argvv, int accum) {
     // Verificar si el comando es mycalc
     if (strcmp(argvv[0][0], "mycalc") == 0) {
@@ -52,18 +61,21 @@ void mycalc(char ***argvv, int accum) {
                 accum += result;
                 // Crear el mensaje de salida
                 sprintf(buf, "[OK] %d + %d = %d; Acc %d\n", op1, op2, result, result);
-            } else if (strcmp(operator, "mul") == 0) {
+            } 
+            else if (strcmp(operator, "mul") == 0) {
                 // Multiplicación: multiplicar operandos
                 result = op1 * op2;
                 // Crear el mensaje de salida
                 sprintf(buf, "[OK] %d * %d = %d\n", op1, op2, result);
-            } else if (strcmp(operator, "div") == 0) {
+            } 
+            else if (strcmp(operator, "div") == 0) {
                 // División: calcular cociente y resto
                 int quotient = op1 / op2;
                 int remainder = op1 % op2;
                 // Crear el mensaje de salida
                 sprintf(buf, "[OK] %d / %d = %d; Resto %d\n", op1, op2, quotient, remainder);
-            } else {
+            } 
+            else {
                 // Operador no válido
                 // Crear el mensaje de salida de error
                 sprintf(buf, "[ERROR] La estructura del comando es mycalc <operando 1> <add/mul/div> <operando 2>\n");
@@ -73,7 +85,8 @@ void mycalc(char ***argvv, int accum) {
             if (write(2, buf, strlen(buf)) < strlen(buf)) {
                 perror("Error in write\n");
             }
-        } else {
+        } 
+        else {
             // Estructura de comando incorrecta
             // Crear el mensaje de salida de error
             char *error_msg = "[ERROR] La estructura del comando es mycalc <operando 1> <add/mul/div> <operando 2>\n";
@@ -84,29 +97,8 @@ void mycalc(char ***argvv, int accum) {
         }
     }
 }
+
 /* myhistory */
-
-
-/*void myhistory(struct command *history, int history_size, int tail) {
-    printf("Command History:\n");
-    int i = tail;
-    int count = 0;
-    while (count < history_size) {
-        if (history[i].argvv != NULL) {
-            printf("[%d] ", count);
-            for (int j = 0; j < history[i].num_commands; j++) {
-                for (int k = 0; k < history[i].args[j]; k++) {
-                    printf("%s ", history[i].argvv[j][k]);
-                }
-                printf(" | ");
-            }
-            printf("\n");
-        }
-        count++;
-        i = (i + 1) % history_size;
-    }
-}*/
-
 
 struct command
 {
@@ -205,7 +197,7 @@ void getCompleteCommand(char*** argvv, int num_command) {
 		argv_execvp[i] = argvv[num_command][i];
 }
 
-
+int contador;
 /**
  * Main sheell  Loop  
  */
@@ -264,145 +256,194 @@ int main(int argc, char* argv[])
             command_counter = read_command(&argvv, filev, &in_background); //NORMAL MODE
     }
 		//************************************************************************************************
-        int curr_command = -1; // identifies which child is in charge of which command
+
 
 		/************************ STUDENTS CODE ********************************/
-	   if (command_counter > 0) {
-			if (command_counter > MAX_COMMANDS){
-				printf("Error: Maximum number of commands is %d \n", MAX_COMMANDS);
-			}
-			else {
-                
-				/* TUBERIAS */
+        
+        int comando_act = -1; // Identifica qué hijo está a cargo de qué comando
 
-                // CONFIGURACION DE TUBERIAS
-                int pipe0[2];
-                int pipe1[2];
+        if (command_counter > 0) {
+            if (command_counter > MAX_COMMANDS){
+                printf("Error: El número máximo de comandos es %d \n", MAX_COMMANDS);
+            }
+            else {
+                store_command(argvv,filev,in_background,&history[contador]);
+                // PIPES
+                /* Configuración de tuberías */
+                int pipe0[2], pipe1[2];
                 pipe(pipe0);
                 pipe(pipe1);
 
-                // creacion de subprocesos 
+                /* Crear procesos hijos */
                 int pid = 1;
-                for (int i = 0; i < command_counter; i++) {
-                    if (pid > 0) {                                              // los forks solo los puede hacer el padre
-                        pid = fork();
-                        if (pid == 0) { // hijo
-                            curr_command = i;
+                for (int i = 0; i < command_counter; i++){
+                    if (pid != 0){ // Solo el padre puede crear hijos
+                        if ((pid = fork()) == 0){ /* hijo */
+                            comando_act = i;
                         }
                     } 
-                    else break;                                                 //si es el hijo no hace frok y sale del bucle
+                    else {
+                        break;
+                    }
                 }
-                
-                //error
-                if (pid == -1) { 
-                    perror("ERROR: en el fork");
+
+                if (pid == -1){ /* error */
+                    perror("Error en fork");
                     return -1;
                 } 
+                else if (pid != 0){ /* proceso padre */
 
-                 // proceso padre
-                else if (pid != 0) {
+                    /* Cerrar tuberías */
+                    close(pipe1[0]); 
+                    close(pipe1[1]);
+                    close(pipe0[0]); 
+                    close(pipe0[1]);
 
-                    //cerramos las tuberias
-                    close(pipe0[0,1]);
-                    close(pipe1[0,1]);
-
-                    /* BACKGROUND */
-                           
-                    if (in_background != 1) {
-                        while (wait(&status) != pid) {                          // esparamos a que termine el hijo
-                            if (status != 0) {
-                                perror("ERROR: ejecutando el hijo");
+                    /* EN SEGUNDO PLANO */
+                    if (in_background != 1){
+                        while (wait(&status) != pid){ // Esperar a que los hijos terminen
+                            if (status != 0){
+                                perror("Error ejecutando el hijo");
                             } 
                         }
                     }
                 } 
-
-                // proceso hijo
-                else {                                                          
-                           
-                    /* REDIRECCIONAMIENTO */
-                    
-                    // redireccion de entrada, file[0] como stdin 
-                    if ((curr_command == 0) && (filev[0][0] != '0')) {
-                        close(STDIN_FILENO);                                                        
-                        int fd = open(filev[0], O_RDONLY);                                          
+                else { /* proceso hijo */
+                        
+                    /* REDIRECCIÓN */
+                    if ((comando_act == 0) && (filev[0][0] != '0')){
+                        /* Redirigir desde la entrada, file[0] como stdin */
+                        close(STDIN_FILENO); // Liberar el descriptor de archivo 0
+                        int fd = open(filev[0], O_RDONLY); // fd ahora es 0
                     } 
-
-                    // redireccion de salida, file[1] como stdout 
-                    else if ((curr_command == command_counter - 1) && (filev[1][0] != '0')) {
+                    else if ((comando_act == command_counter - 1) && (filev[1][0] != '0')){
+                        /* Redirigir hacia la salida, file[1] como stdout */
                         close(STDOUT_FILENO);
                         int fd = open(filev[1], O_CREAT | O_RDWR, S_IRWXU);                          
                     }
-
-                    // redireccion de error, file[1] como stderr 
-                    if (filev[2][0] != '0') {
+                    if (filev[2][0] != '0'){
+                        /* Redirigir error, file[1] como stderr */
                         close(STDERR_FILENO);
                         int fd = open(filev[2], O_CREAT | O_RDWR, S_IRWXU);                          
                     }
 
-                    /* TUBERIAS */
-
-                    if (command_counter > 1) {
-
-                        // primer comando
-                        if (curr_command == 0) {                                
-                            close(pipe1[0,1]);
+                    /* TUBERÍAS */
+                    if (command_counter > 1){
+                        if (comando_act == 0){ /* primer comando - salida de pipe0 */
+                            close(pipe1[0]); 
+                            close(pipe1[1]);
                             close(pipe0[0]);
-                            dup2(pipe0[1], STDOUT_FILENO);                      // stdout es ahora la tuberia de escritura
+                            dup2(pipe0[1], STDOUT_FILENO); // stdout es ahora la escritura de la tubería
                             close(pipe0[1]);
                         } 
-
-                        // ultimo comando, tuberia de entrada 
-                        else if (curr_command == command_counter - 1) {         
-                            if ((curr_command % 2) != 0) {                      // si el comando es inpar leemos de pipe0
-                                close(pipe1[0,1]);
+                        else if (comando_act == command_counter - 1){ /* último comando - entrada de pipe */
+                            if ((comando_act % 2) != 0){ // impar - lee desde pipe0
+                                close(pipe1[0]); 
+                                close(pipe1[1]);
                                 close(pipe0[1]);
-                                dup2(pipe0[0], STDIN_FILENO);                   // stdin es ahora tuberia de lectura
+                                dup2(pipe0[0], STDIN_FILENO); // stdin es ahora la lectura de la tubería
                                 close(pipe0[0]);
                             } 
-                            else {                                              // si el comando es par leemos de pipe1
-                                close(pipe0[0,1]);
+                            else{ /* par - entrada de pipe1 */
+                                close(pipe0[0]); 
+                                close(pipe0[1]);
                                 close(pipe1[1]);
                                 dup2(pipe1[0], STDIN_FILENO);
                                 close(pipe1[0]);
                             }
                         } 
-                        else if ((curr_command % 2) != 0) {                     // comando intermedio inpar - tuberia de entrada y salida
+                        else if ((comando_act % 2) != 0){ /* comando intermedio, impar - entrada/salida de tubería */
                             close(pipe0[1]);
                             close(pipe1[0]);
                             dup2(pipe0[0], STDIN_FILENO);
                             dup2(pipe1[1], STDOUT_FILENO);
                         } 
-                        else {                                                  // comando intermedio par - tuberia de entrada y salida
+                        else{ /* comando intermedio, par - entrada/salida de tubería */
                             close(pipe1[1]);
                             close(pipe0[0]);
-                            dup2(pipe1[0], STDIN_FILENO);                       // como es inpar, hay que alternar para completar el bucle
+                            dup2(pipe1[0], STDIN_FILENO); // como es par, tenemos que alternar para completar el bucle
                             close(pipe1[0]);
                             dup2(pipe0[1], STDOUT_FILENO);
                             close(pipe0[1]);
                         }
-                        
                     }
-
-                    /* COMANDOS */
                     
-                    //se ejecuta mycalc
-                    if (strcmp(argvv[curr_command][0], "mycalc") == 0) { 
-                        /* execute mycalc */
+                    /* EJECUTAR EL COMANDO ACTUAL */
+                    /* COMANDOS INTERNOS */
+                    if (strcmp(argvv[comando_act][0], "mycalc") == 0){
+                        /* ejecutar mycalc */
                         mycalc(argvv, accum);
                         exit(0);
-                    }
+                    } 
+                    else if (strcmp(argvv[0][0],"myhistory")==0) {    
+                        // Manejar el comando "myhistory"
+                        int i; // Variable para el contador en los bucles
 
-                    //se ejecuta cualquier comando que no sea interno (siempre que exista)
-                    else {
-                        getCompleteCommand(argvv, curr_command);
-                        execvp(argvv[curr_command][0], argvv[curr_command]);
-                        perror("ERROR: en el execvp\n");
+                        if (argvv[0][1] != NULL) {
+                            // Mostrar un comando específico del historial
+                            int index = atoi(argvv[0][1]) - 1;
+                            store_command(argvv, filev, in_background, &history[contador]);
+                            if (index + 1 < 0 || index >= history_size) {
+                                fprintf(stdout, "ERROR: Comando no encontrado\n");
+                                continue; // Ir al siguiente bucle
+                            } 
+                            else {
+                                fprintf(stderr, "Ejecutando el comando %d\n", index + 1);
+                                struct command *cmd = &history[index + 1];
+                                pid_t pid = fork();
+                                if (pid < 0) {
+                                    fprintf(stdout, "Error en fork\n");
+                                    exit(-1);
+                                } else if (pid == 0) {
+                                    // Proceso hijo
+                                    char **argv = cmd->argvv[0];
+                                    execvp(argv[0], argv);
+                                    fprintf(stdout, "Error en el hijo\n");
+                                    exit(-1);
+                                } else {
+                                    // Proceso padre
+                                    int status;
+                                    waitpid(pid, &status, 0);
+                                }
+                                continue; // Ir al siguiente bucle
+                            }
+                        } 
+                        else {
+                            // Mostrar el historial completo
+                            if (n_elem > history_size) {
+                                head = n_elem - 20;
+                            }
+                            for (int i = 0; i < history_size; i++) {
+                                struct command cmd = history[i];
+                                if (cmd.num_commands > 0) {
+                                    fprintf(stderr, "%d ", i);
+                                    for (int j = 0; j < cmd.num_commands; j++) {
+                                        n_elem = n_elem + 1;
+                                        for (int k = 0; k < cmd.args[j]; k++) {
+                                            fprintf(stderr, "%s ", cmd.argvv[j][k]);
+                                        }
+                                        if (j < cmd.num_commands - 1) {
+                                            fprintf(stderr, "| ");
+                                        }
+                                    }
+                                    fprintf(stderr, "\n");
+                                }
+                            }
+                            continue; // Ir al siguiente bucle
+                        }
+
+                    }
+                    else{
+                        /* EJECUCIÓN DEL COMANDO */
+                        getCompleteCommand(argvv, comando_act);
+                        execvp(argvv[comando_act][0], argvv[comando_act]); // ejecutar el comando
+                        perror("Error en execvp\n");
                         exit(0);
                     }
                 }
-			}
-		}
-	}
-	return 0;
+            }
+        }
+
+    }
+    return 0;
 }
