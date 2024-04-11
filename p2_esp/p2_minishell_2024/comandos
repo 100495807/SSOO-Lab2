@@ -1,3 +1,123 @@
-make    para compilar la terminal
-make clean  para borrar lo compilado
-c
+//make para compilar la terminal
+//make clean  para borrar lo compilado
+
+
+
+
+/*
+            else if(strcmp(argvv[0][0],"myhistory")==0) {	
+                int i;
+
+                if (argvv[0][1] != NULL) {
+
+                    // Mostrar un comando específico del historial
+                    int index = atoi(argvv[0][1]) - 1;
+                    store_command(argvv,filev,in_background,&history[contador]);
+                    if (index + 1 < 0 ||  index  >= history_size){
+                        fprintf(stdout, "ERROR: Comando no encontrado\n");
+                        continue;
+                    }
+
+                    else {
+
+                        fprintf(stderr,"Ejecutando el comando %d\n", index+1);
+                        struct command *cmd = &history[index+1];
+                
+                        pid_t pid = fork();
+
+                        if (pid<0){
+                            fprintf(stdout, "Error fork");
+                            exit(-1);
+                        }
+                        else if (pid == 0){
+                            char **argv = cmd->argvv[0];
+                            execvp(argv[0], argv);
+                            fprintf(stdout,"Error hijo\n");
+                            exit(-1);}
+                            else{ //Pare
+                            int status;
+                            waitpid(pid,&status,0);
+                        }
+                            
+                    continue;     
+                    }
+
+                } 
+
+                else {
+                    // Mostrar el historial completo
+                    if (n_elem>history_size) {
+                        head = n_elem-20;}
+                        for (int i = 0; i < history_size; i++) {
+
+                            struct command cmd = history[i];
+                            
+                            if (cmd.num_commands>0) {
+                                fprintf(stderr, "%d ", i );
+                            for (int j= 0; j < cmd.num_commands; j++) {
+                                n_elem = n_elem + 1;
+
+                                for (int k = 0; k < cmd.args[j]; k++) {
+                                    fprintf(stderr, "%s ", cmd.argvv[j][k]);
+                                }
+                                
+                                if (j<cmd.num_commands-1){
+                                fprintf(stderr, "| ");
+                                }
+                            }
+                            fprintf(stderr, "\n");
+                            }
+                    }
+                    continue;
+                }
+            } */
+
+
+
+/*
+void myhistory(char ***argvv){
+    printf("Command stored:\n");
+    print_command(&history[(head - 1) % history_size]);
+}
+*/
+
+/*
+void myhistory(struct command *history, int history_size, int tail) {
+    printf("Command History:\n");
+    int i = tail;
+    int count = 0;
+    while (count < history_size) {
+        if (history[i].argvv != NULL) {
+            printf("[%d] ", count);
+            for (int j = 0; j < history[i].num_commands; j++) {
+                for (int k = 0; k < history[i].args[j]; k++) {
+                    printf("%s ", history[i].argvv[j][k]);
+                }
+                printf(" | ");
+            }
+            printf("\n");
+        }
+        count++;
+        i = (i + 1) % history_size;
+    }
+}
+*/
+
+
+/*
+void print_command(struct command *cmd) {
+    //printf("Number of commands: %d\n", cmd->num_commands);
+    //printf("Background: %d\n", cmd->in_background);
+    printf("Command: ");
+    for (int i = 0; i < cmd->num_commands; i++) {
+        for (int j = 0; j < cmd->args[i]; j++) {
+            printf("%s", cmd->argvv[i][j]);
+        printf(" ");
+        }
+    }
+    //printf("Input redirection: %s\n", cmd->filev[0]);
+    //printf("Output redirection: %s\n", cmd->filev[1]);
+    //printf("Error redirection: %s\n", cmd->filev[2]);
+    printf("\n");
+}
+*/
