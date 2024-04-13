@@ -34,8 +34,8 @@ void siginthandler(int param)
 	//signal(SIGINT, siginthandler);
 	exit(0);
 }
-
-int contador;
+//
+int contador = 0;
 
 /* myhistory */
 int accum = 0;
@@ -277,7 +277,71 @@ int main(int argc, char* argv[])
                 printf("Error: El número máximo de comandos es %d \n", MAX_COMMANDS);
             }
             else {
-                store_command(argvv,filev,in_background,&history[contador]);
+                if (strcmp(argvv[0][0],"myhistory") != 0);
+                    store_command(argvv,filev,in_background,&history[contador]);
+                    contador++;
+                if (strcmp(argvv[0][0], "mycalc") == 0){
+                        /* ejecutar mycalc */
+                        mycalc(argvv);
+                        exit(0);
+                    } 
+                else if (strcmp(argvv[0][0],"myhistory")==0) {    
+                    // Manejar el comando "myhistory"
+                    int i; // Variable para el contador en los bucles
+                    if (argvv[0][1] != NULL) {
+                        // Mostrar un comando específico del historial
+                        int index = atoi(argvv[0][1]) - 1;
+                        store_command(argvv, filev, in_background, &history[contador]);
+                        if (index + 1 < 0 || index >= history_size || index > n_elem) {
+                            fprintf(stdout, "ERROR: Comando no encontrado\n");
+                            continue; // Ir al siguiente bucle
+                        } 
+                        else {
+                            fprintf(stderr, "Ejecutando el comando %d\n", index + 1);
+                            struct command *cmd = &history[index + 1];
+                            pid_t pid = fork();
+                            if (pid < 0) {
+                                fprintf(stdout, "Error en fork\n");
+                                exit(-1);
+                            } else if (pid == 0) {
+                                // Proceso hijo
+                                char **argv = cmd->argvv[0];
+                                execvp(argv[0], argv);
+                                fprintf(stdout, "Error en el hijo\n");
+                                exit(-1);
+                            } else {
+                                // Proceso padre
+                                int status;
+                                waitpid(pid, &status, 0);
+                            }
+                        }
+                        continue;
+                    } 
+                    else {
+                        // Mostrar el historial completo
+                        if (n_elem > history_size) {
+                            head = n_elem - 20;
+                        }
+                        for (int i = 0; i < history_size; i++) {
+                            struct command cmd = history[i];
+                            if (cmd.num_commands > 0) {
+                                fprintf(stderr, "%d ", i);
+                                for (int j = 0; j < cmd.num_commands; j++) {
+                                    n_elem = n_elem + 1;
+                                    for (int k = 0; k < cmd.args[j]; k++) {
+                                        fprintf(stderr, "%s ", cmd.argvv[j][k]);
+                                    }
+                                    if (j < cmd.num_commands - 1) {
+                                        fprintf(stderr, "| ");
+                                    }
+                                }
+                                fprintf(stderr, "\n");
+                            }
+                        }
+                        continue;
+                    }
+                }
+                
                 // PIPES
                 /* Configuración de tuberías */
                 int pipe0[2], pipe1[2];
@@ -380,75 +444,12 @@ int main(int argc, char* argv[])
 
                     /* EJECUTAR EL COMANDO ACTUAL */
                     /* COMANDOS INTERNOS */
-                    if (strcmp(argvv[0][0], "mycalc") == 0){
-                        /* ejecutar mycalc */
-                        mycalc(argvv);
-                        continue;
-                    } 
-                    else if (strcmp(argvv[0][0],"myhistory")==0) {    
-                        // Manejar el comando "myhistory"
-                        int i; // Variable para el contador en los bucles
-                        if (argvv[0][1] != NULL) {
-                            // Mostrar un comando específico del historial
-                            int index = atoi(argvv[0][1]) - 1;
-                            store_command(argvv, filev, in_background, &history[contador]);
-                            if (index + 1 < 0 || index >= history_size) {
-                                fprintf(stdout, "ERROR: Comando no encontrado\n");
-                                continue; // Ir al siguiente bucle
-                            } 
-                            else {
-                                fprintf(stderr, "Ejecutando el comando %d\n", index + 1);
-                                struct command *cmd = &history[index + 1];
-                                pid_t pid = fork();
-                                if (pid < 0) {
-                                    fprintf(stdout, "Error en fork\n");
-                                    exit(-1);
-                                } else if (pid == 0) {
-                                    // Proceso hijo
-                                    char **argv = cmd->argvv[0];
-                                    execvp(argv[0], argv);
-                                    fprintf(stdout, "Error en el hijo\n");
-                                    exit(-1);
-                                } else {
-                                    // Proceso padre
-                                    int status;
-                                    waitpid(pid, &status, 0);
-                                }
-                                continue; // Ir al siguiente bucle
-                            }
-                        } 
-                        else {
-                            // Mostrar el historial completo
-                            if (n_elem > history_size) {
-                                head = n_elem - 20;
-                            }
-                            for (int i = 0; i < history_size; i++) {
-                                struct command cmd = history[i];
-                                if (cmd.num_commands > 0) {
-                                    fprintf(stderr, "%d ", i);
-                                    for (int j = 0; j < cmd.num_commands; j++) {
-                                        n_elem = n_elem + 1;
-                                        for (int k = 0; k < cmd.args[j]; k++) {
-                                            fprintf(stderr, "%s ", cmd.argvv[j][k]);
-                                        }
-                                        if (j < cmd.num_commands - 1) {
-                                            fprintf(stderr, "| ");
-                                        }
-                                    }
-                                    fprintf(stderr, "\n");
-                                }
-                            }
-                            continue; // Ir al siguiente bucle
-                        }
-
-                    }
-                    else{
-                        /* EJECUCIÓN DEL COMANDO */
-                        getCompleteCommand(argvv, comando_act);
-                        execvp(argvv[comando_act][0], argvv[comando_act]); // ejecutar el comando
-                        perror("Error en execvp\n");
-                        exit(0);
-                    }
+                if (strcmp(argvv[0][0],"myhistory")!=0 || strcmp(argvv[0][0],"mycalc")!=0 ){
+                    getCompleteCommand(argvv, comando_act);
+                    execvp(argvv[comando_act][0], argvv[comando_act]); // ejecutar el comando
+                    perror("Error en execvp\n");
+                    exit(0);
+                }
                 }
             }
         }
