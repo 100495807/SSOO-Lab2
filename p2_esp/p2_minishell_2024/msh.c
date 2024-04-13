@@ -38,7 +38,6 @@ void siginthandler(int param)
 int contador = 0;
 
 /* myhistory */
-int accum = 0;
 void mycalc(char ***argvv) {
     // Verificar si el comando es mycalc
     if (strcmp(argvv[0][0], "mycalc") == 0) {
@@ -52,12 +51,18 @@ void mycalc(char ***argvv) {
             char buf[100];  // Buffer para almacenar el mensaje de salida
             // Realizar la operación según el operador
             if (strcmp(operator, "add") == 0) {
-                // Suma: sumar operandos y actualizar la variable de entorno "Acc"
+                // Suma: sumar operandos y acumular en la variable de entorno "Acc"
                 result = op1 + op2;
-                accum += result;
+                char *acc_str = getenv("Acc"); // Obtener el valor actual de "Acc"
+                int acc = (acc_str != NULL) ? atoi(acc_str) : 0; // Convertir a entero, si es NULL asignar 0
+                acc += result; // Sumar el resultado actual al valor acumulado
+                // Convertir el nuevo valor acumulado a cadena de caracteres
+                sprintf(buf, "%d", acc);
+                // Actualizar la variable de entorno "Acc" con el nuevo valor
+                setenv("Acc", buf, 1); // 1 para sobrescribir la variable si ya existe
                 // Crear el mensaje de salida
-                sprintf(buf, "[OK] %d + %d = %d; Acc %d\n", op1, op2, result, accum);
-            } 
+                sprintf(buf, "[OK] %d + %d = %d; Acc %d\n", op1, op2, result, acc);
+            }
             else if (strcmp(operator, "mul") == 0) {
                 // Multiplicación: multiplicar operandos
                 result = op1 * op2;
@@ -447,7 +452,7 @@ int main(int argc, char* argv[])
 
                     /* EJECUTAR EL COMANDO ACTUAL */
                     /* COMANDOS INTERNOS */
-                if (strcmp(argvv[0][0],"myhistory")!=0 || strcmp(argvv[0][0],"mycalc")!=0 ){
+                if (strcmp(argvv[0][0],"myhistory")!=0 && strcmp(argvv[0][0],"mycalc")!=0 ){
                     getCompleteCommand(argvv, comando_act);
                     execvp(argvv[comando_act][0], argvv[comando_act]); // ejecutar el comando
                     perror("Error en execvp\n");
@@ -457,7 +462,6 @@ int main(int argc, char* argv[])
                 }
             }
         }
-
     }
     return 0;
 }
