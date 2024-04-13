@@ -4,7 +4,7 @@
 
 
 
-/*
+
             else if(strcmp(argvv[0][0],"myhistory")==0) {	
                 int i;
 
@@ -47,7 +47,8 @@
                 else {
                     // Mostrar el historial completo
                     if (n_elem>history_size) {
-                        head = n_elem-20;}
+                        head = n_elem-20;
+                    }
                         for (int i = 0; i < history_size; i++) {
 
                             struct command cmd = history[i];
@@ -67,10 +68,11 @@
                             }
                             fprintf(stderr, "\n");
                             }
-                    }
+                        }
                     continue;
                 }
-            } */
+       
+            } 
 
 
 
@@ -121,3 +123,33 @@ void print_command(struct command *cmd) {
     printf("\n");
 }
 */
+
+
+
+/*void myhistory(char ***argvv, struct command cmd) {
+    if (argvv[0][1] == NULL) {
+        exit(0);
+    } else {
+        if (n_elem > history_size) {
+            head = n_elem - 20;
+        }
+        for (int i = 0; i < history_size; i++) {
+            if (cmd->num_commands > 0) {
+                fprintf(stderr, "%d", i);
+
+                for (int j = 0; j < cmd->num_commands; j++) {
+                    n_elem++;
+
+                    for (int w = 0; w < cmd->args[j]; w++) {
+                        fprintf(stderr, "%s ", cmd->argvv[j][w]);
+                    }
+
+                    if (j < cmd->num_commands - 1) {
+                        fprintf(stderr, "| ");
+                    }
+                }
+                fprintf(stderr, "\n");
+            }
+        }
+    }
+}*/
