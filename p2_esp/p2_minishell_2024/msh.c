@@ -79,7 +79,7 @@ void mycalc(char ***argvv) {
             else {
                 // Operador no válido
                 // Crear el mensaje de salida de error
-                sprintf(buf, "[ERROR] La estructura del comando es mycalc <operando 1> <add/mul/div> <operando 2>\n");
+                sprintf(buf, "[ERROR] La estructura del comando es mycalc <operando_1> <add/mul/div> <operando_2>\n");
             }
 
             // Escribir el mensaje en la salida estándar de error
@@ -90,7 +90,7 @@ void mycalc(char ***argvv) {
         else {
             // Estructura de comando incorrecta
             // Crear el mensaje de salida de error
-            char *error_msg = "[ERROR] La estructura del comando es mycalc <operando 1> <add/mul/div> <operando 2>\n";
+            char *error_msg = "[ERROR] La estructura del comando es mycalc <operando_1> <add/mul/div> <operando_2>\n";
             // Escribir el mensaje en la salida estándar
             if (write(1, error_msg, strlen(error_msg)) < strlen(error_msg)) {
                 perror("Error in write\n");
@@ -226,7 +226,7 @@ void myhistory(char ***argvv, int in_background) {
     else {
         // Mostrar un comando específico del historial
         int index = atoi(argvv[0][1]) - 1;
-        store_command(argvv, filev, in_background, &history[contador]);
+        //store_command(argvv, filev, in_background, &history[contador]);
         if (index + 1 < 0 || index >= history_size || index > n_elem) {
             fprintf(stdout, "ERROR: Comando no encontrado\n");
         } 
