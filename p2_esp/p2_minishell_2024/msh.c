@@ -34,10 +34,10 @@ void siginthandler(int param)
 	//signal(SIGINT, siginthandler);
 	exit(0);
 }
-//
+
 int contador = 0;
 
-/* myhistory */
+/* mycalc */
 void mycalc(char ***argvv) {
     // Verificar si el comando es mycalc
     if (strcmp(argvv[0][0], "mycalc") == 0) {
@@ -98,7 +98,7 @@ void mycalc(char ***argvv) {
         }
     }
 }
-/* myhistory */
+/* mycalc */
 
 struct command
 {
@@ -179,24 +179,6 @@ void store_command(char ***argvv, char filev[3][64], int in_background, struct c
     }
 }
 
-void myhistory(char ***argvv) {
-    if ((argvv)[0][1] == NULL) {
-        // Mostrar la lista de los últimos 20 comandos introducidos
-        for (int i = 0; i < history_size; i++) {
-            fprintf(stderr, "%d %s\n", i, history[i].argvv[0][0]);
-        }
-    } else {
-        int command_index = atoi((argvv)[0][1]);
-        if (command_index >= 0 && command_index < history_size) {
-            // Ejecutar el comando correspondiente
-            fprintf(stderr, "Ejecutando el comando %d\n", command_index);
-            // Aquí puedes usar execvp() o cualquier otra función según la lógica de tu minishell
-        } else {
-            // Mostrar un mensaje de error si el comando no se encuentra en el historial
-            fprintf(stderr, "ERROR: Comando no encontrado\n");
-        }
-    }
-}
 
 /**
  * Get the command with its parameters for execvp
@@ -214,6 +196,64 @@ void getCompleteCommand(char*** argvv, int num_command) {
 	for ( i = 0; argvv[num_command][i] != NULL; i++)
 		argv_execvp[i] = argvv[num_command][i];
 }
+
+
+/* myhistory */
+void myhistory(char ***argvv, int in_background) {
+    int i; // Variable para el contador en los bucles
+    if (argvv[0][1] == NULL) {
+        // Mostrar el historial completo
+        if (n_elem > history_size) {
+            head = n_elem - 20;
+        }
+        for (int i = 0; i < history_size; i++) {
+            struct command cmd = history[i];
+            if (cmd.num_commands > 0) {
+                fprintf(stderr, "%d ", i);
+                for (int j = 0; j < cmd.num_commands; j++) {
+                    n_elem = n_elem + 1;
+                    for (int k = 0; k < cmd.args[j]; k++) {
+                        fprintf(stderr, "%s ", cmd.argvv[j][k]);
+                    }
+                    if (j < cmd.num_commands - 1) {
+                        fprintf(stderr, "| ");
+                    }
+                }
+                fprintf(stderr, "\n");
+            }
+        }
+    } 
+    else {
+        // Mostrar un comando específico del historial
+        int index = atoi(argvv[0][1]) - 1;
+        store_command(argvv, filev, in_background, &history[contador]);
+        if (index + 1 < 0 || index >= history_size || index > n_elem) {
+            fprintf(stdout, "ERROR: Comando no encontrado\n");
+        } 
+        else {
+            fprintf(stderr, "Ejecutando el comando %d\n", index + 1);
+            struct command *cmd = &history[index + 1];
+            int pid;
+            pid = fork();
+            if (pid < 0) {
+                fprintf(stdout, "Error en fork\n");
+                exit(-1);
+            } else if (pid == 0) {
+                // Proceso hijo
+                char **argv = cmd->argvv[0];
+                execvp(argv[0], argv);
+                fprintf(stdout, "Error en el hijo\n");
+                exit(-1);
+            } else {
+                // Proceso padre
+                int status;
+                waitpid(pid, &status, 0);
+            }
+        }
+    }    
+}
+/* myhistory */
+
 
 /**
  * Main sheell  Loop  
@@ -283,6 +323,9 @@ int main(int argc, char* argv[])
             }
             else {
                 if (strcmp(argvv[0][0],"myhistory") != 0){
+                    if (contador > history_size) {
+                        free_command(&history[0]);
+                    }
                     store_command(argvv,filev,in_background,&history[contador]);
                     contador++;
                 }
@@ -293,60 +336,7 @@ int main(int argc, char* argv[])
                 } 
                 else if (strcmp(argvv[0][0],"myhistory")==0) {    
                     // Manejar el comando "myhistory"
-                    int i; // Variable para el contador en los bucles
-                    if (argvv[0][1] == NULL) {
-                        // Mostrar el historial completo
-                        if (n_elem > history_size) {
-                            head = n_elem - 20;
-                        }
-                        for (int i = 0; i < history_size; i++) {
-                            struct command cmd = history[i];
-                            if (cmd.num_commands > 0) {
-                                fprintf(stderr, "%d ", i);
-                                for (int j = 0; j < cmd.num_commands; j++) {
-                                    n_elem = n_elem + 1;
-                                    for (int k = 0; k < cmd.args[j]; k++) {
-                                        fprintf(stderr, "%s ", cmd.argvv[j][k]);
-                                    }
-                                    if (j < cmd.num_commands - 1) {
-                                        fprintf(stderr, "| ");
-                                    }
-                                }
-                                fprintf(stderr, "\n");
-                            }
-                        }
-                        continue;
-                    } 
-                    else {
-                        // Mostrar un comando específico del historial
-                        int index = atoi(argvv[0][1]) - 1;
-                        store_command(argvv, filev, in_background, &history[contador]);
-                        if (index + 1 < 0 || index >= history_size || index > n_elem) {
-                            fprintf(stdout, "ERROR: Comando no encontrado\n");
-                            continue; // Ir al siguiente bucle
-                        } 
-                        else {
-                            fprintf(stderr, "Ejecutando el comando %d\n", index + 1);
-                            struct command *cmd = &history[index + 1];
-                            int pid;
-                            pid = fork();
-                            if (pid < 0) {
-                                fprintf(stdout, "Error en fork\n");
-                                exit(-1);
-                            } else if (pid == 0) {
-                                // Proceso hijo
-                                char **argv = cmd->argvv[0];
-                                execvp(argv[0], argv);
-                                fprintf(stdout, "Error en el hijo\n");
-                                exit(-1);
-                            } else {
-                                // Proceso padre
-                                int status;
-                                waitpid(pid, &status, 0);
-                            }
-                        }
-                        continue;
-                    }
+                    myhistory(argvv, in_background);
                 }
                 
                 else{
