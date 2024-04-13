@@ -277,47 +277,19 @@ int main(int argc, char* argv[])
                 printf("Error: El número máximo de comandos es %d \n", MAX_COMMANDS);
             }
             else {
-                if (strcmp(argvv[0][0],"myhistory") != 0);
+                if (strcmp(argvv[0][0],"myhistory") != 0){
                     store_command(argvv,filev,in_background,&history[contador]);
                     contador++;
+                }
                 if (strcmp(argvv[0][0], "mycalc") == 0){
                         /* ejecutar mycalc */
                         mycalc(argvv);
-                        exit(0);
-                    } 
+                        continue;
+                } 
                 else if (strcmp(argvv[0][0],"myhistory")==0) {    
                     // Manejar el comando "myhistory"
                     int i; // Variable para el contador en los bucles
-                    if (argvv[0][1] != NULL) {
-                        // Mostrar un comando específico del historial
-                        int index = atoi(argvv[0][1]) - 1;
-                        store_command(argvv, filev, in_background, &history[contador]);
-                        if (index + 1 < 0 || index >= history_size || index > n_elem) {
-                            fprintf(stdout, "ERROR: Comando no encontrado\n");
-                            continue; // Ir al siguiente bucle
-                        } 
-                        else {
-                            fprintf(stderr, "Ejecutando el comando %d\n", index + 1);
-                            struct command *cmd = &history[index + 1];
-                            pid_t pid = fork();
-                            if (pid < 0) {
-                                fprintf(stdout, "Error en fork\n");
-                                exit(-1);
-                            } else if (pid == 0) {
-                                // Proceso hijo
-                                char **argv = cmd->argvv[0];
-                                execvp(argv[0], argv);
-                                fprintf(stdout, "Error en el hijo\n");
-                                exit(-1);
-                            } else {
-                                // Proceso padre
-                                int status;
-                                waitpid(pid, &status, 0);
-                            }
-                        }
-                        continue;
-                    } 
-                    else {
+                    if (argvv[0][1] == NULL) {
                         // Mostrar el historial completo
                         if (n_elem > history_size) {
                             head = n_elem - 20;
@@ -339,10 +311,41 @@ int main(int argc, char* argv[])
                             }
                         }
                         continue;
+                    } 
+                    else {
+                        // Mostrar un comando específico del historial
+                        int index = atoi(argvv[0][1]) - 1;
+                        store_command(argvv, filev, in_background, &history[contador]);
+                        if (index + 1 < 0 || index >= history_size || index > n_elem) {
+                            fprintf(stdout, "ERROR: Comando no encontrado\n");
+                            continue; // Ir al siguiente bucle
+                        } 
+                        else {
+                            fprintf(stderr, "Ejecutando el comando %d\n", index + 1);
+                            struct command *cmd = &history[index + 1];
+                            int pid;
+                            pid = fork();
+                            if (pid < 0) {
+                                fprintf(stdout, "Error en fork\n");
+                                exit(-1);
+                            } else if (pid == 0) {
+                                // Proceso hijo
+                                char **argv = cmd->argvv[0];
+                                execvp(argv[0], argv);
+                                fprintf(stdout, "Error en el hijo\n");
+                                exit(-1);
+                            } else {
+                                // Proceso padre
+                                int status;
+                                waitpid(pid, &status, 0);
+                            }
+                        }
+                        continue;
                     }
                 }
                 
-                // PIPES
+                else{
+                    // PIPES
                 /* Configuración de tuberías */
                 int pipe0[2], pipe1[2];
                 pipe(pipe0);
@@ -449,6 +452,7 @@ int main(int argc, char* argv[])
                     execvp(argvv[comando_act][0], argvv[comando_act]); // ejecutar el comando
                     perror("Error en execvp\n");
                     exit(0);
+                }
                 }
                 }
             }
