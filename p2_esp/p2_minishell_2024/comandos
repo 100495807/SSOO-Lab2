@@ -153,3 +153,254 @@ void print_command(struct command *cmd) {
         }
     }
 }*/
+
+
+
+//funciona bien con myhistory dentro del bucle
+int main(int argc, char* argv[])
+{
+	/**** Do not delete this code.****/
+	int end = 0; 
+	int executed_cmd_lines = -1;
+	char *cmd_line = NULL;
+	char *cmd_lines[10];
+
+	if (!isatty(STDIN_FILENO)) {
+		cmd_line = (char*)malloc(100);
+		while (scanf(" %[^\n]", cmd_line) != EOF){
+			if(strlen(cmd_line) <= 0) return 0;
+			cmd_lines[end] = (char*)malloc(strlen(cmd_line)+1);
+			strcpy(cmd_lines[end], cmd_line);
+			end++;
+			fflush (stdin);
+			fflush(stdout);
+		}
+	}
+
+	/*********************************/
+
+	char ***argvv = NULL;
+	int num_commands;
+
+	history = (struct command*) malloc(history_size *sizeof(struct command));
+	int run_history = 0;
+
+	while (1) 
+	{
+		int status = 0;
+		int command_counter = 0;
+		int in_background = 0;
+		signal(SIGINT, siginthandler);
+
+		if (run_history)
+    {
+        run_history=0;
+    }
+    else{
+        // Prompt 
+        write(STDERR_FILENO, "MSH>>", strlen("MSH>>"));
+
+        // Get command
+        //********** DO NOT MODIFY THIS PART. IT DISTINGUISH BETWEEN NORMAL/CORRECTION MODE***************
+        executed_cmd_lines++;
+        if( end != 0 && executed_cmd_lines < end) {
+            command_counter = read_command_correction(&argvv, filev, &in_background, cmd_lines[executed_cmd_lines]);
+        }
+        else if( end != 0 && executed_cmd_lines == end)
+            return 0;
+        else
+            command_counter = read_command(&argvv, filev, &in_background); //NORMAL MODE
+    }
+		//************************************************************************************************
+
+
+		/************************ STUDENTS CODE ********************************/        
+        int comando_act = -1; // Identifica qué hijo está a cargo de qué comando
+        if (command_counter > 0) {
+            if (command_counter > MAX_COMMANDS){
+                printf("Error: El número máximo de comandos es %d \n", MAX_COMMANDS);
+            }
+            else {
+                if (strcmp(argvv[0][0],"myhistory") != 0){
+                    store_command(argvv,filev,in_background,&history[contador]);
+                    contador++;
+                }
+                if (strcmp(argvv[0][0], "mycalc") == 0){
+                        /* ejecutar mycalc */
+                        mycalc(argvv);
+                        continue;
+                } 
+                else if (strcmp(argvv[0][0],"myhistory")==0) {    
+                    // Manejar el comando "myhistory"
+                    int i; // Variable para el contador en los bucles
+                    if (argvv[0][1] == NULL) {
+                        // Mostrar el historial completo
+                        if (n_elem > history_size) {
+                            head = n_elem - 20;
+                        }
+                        for (int i = 0; i < history_size; i++) {
+                            struct command cmd = history[i];
+                            if (cmd.num_commands > 0) {
+                                fprintf(stderr, "%d ", i);
+                                for (int j = 0; j < cmd.num_commands; j++) {
+                                    n_elem = n_elem + 1;
+                                    for (int k = 0; k < cmd.args[j]; k++) {
+                                        fprintf(stderr, "%s ", cmd.argvv[j][k]);
+                                    }
+                                    if (j < cmd.num_commands - 1) {
+                                        fprintf(stderr, "| ");
+                                    }
+                                }
+                                fprintf(stderr, "\n");
+                            }
+                        }
+                        continue;
+                    } 
+                    else {
+                        // Mostrar un comando específico del historial
+                        int index = atoi(argvv[0][1]) - 1;
+                        store_command(argvv, filev, in_background, &history[contador]);
+                        if (index + 1 < 0 || index >= history_size || index > n_elem) {
+                            fprintf(stdout, "ERROR: Comando no encontrado\n");
+                            continue; // Ir al siguiente bucle
+                        } 
+                        else {
+                            fprintf(stderr, "Ejecutando el comando %d\n", index + 1);
+                            struct command *cmd = &history[index + 1];
+                            int pid;
+                            pid = fork();
+                            if (pid < 0) {
+                                fprintf(stdout, "Error en fork\n");
+                                exit(-1);
+                            } else if (pid == 0) {
+                                // Proceso hijo
+                                char **argv = cmd->argvv[0];
+                                execvp(argv[0], argv);
+                                fprintf(stdout, "Error en el hijo\n");
+                                exit(-1);
+                            } else {
+                                // Proceso padre
+                                int status;
+                                waitpid(pid, &status, 0);
+                            }
+                        }
+                        continue;
+                    }
+                }
+                
+                else{
+                    // PIPES
+                /* Configuración de tuberías */
+                int pipe0[2], pipe1[2];
+                pipe(pipe0);
+                pipe(pipe1);
+
+                /* Crear procesos hijos */
+                int pid = 1;
+                for (int i = 0; i < command_counter; i++){
+                    if (pid != 0){ // Solo el padre puede crear hijos
+                        if ((pid = fork()) == 0){ /* hijo */
+                            comando_act = i;
+                        }
+                    } 
+                    else {
+                        break;
+                    }
+                }
+
+                if (pid == -1){ /* error */
+                    perror("Error en fork");
+                    return -1;
+                } 
+                else if (pid != 0){ /* proceso padre */
+
+                    /* Cerrar tuberías */
+                    close(pipe1[0]); 
+                    close(pipe1[1]);
+                    close(pipe0[0]); 
+                    close(pipe0[1]);
+
+                    /* EN SEGUNDO PLANO */
+                    if (in_background != 1){
+                        while (wait(&status) != pid){ // Esperar a que los hijos terminen
+                            if (status != 0){
+                                perror("Error ejecutando el hijo");
+                            } 
+                        }
+                    }
+                } 
+                else { /* proceso hijo */
+                        
+                    /* REDIRECCIÓN */
+                    if ((comando_act == 0) && (filev[0][0] != '0')){
+                        /* Redirigir desde la entrada, file[0] como stdin */
+                        close(STDIN_FILENO); // Liberar el descriptor de archivo 0
+                        int fd = open(filev[0], O_RDONLY); // fd ahora es 0
+                    } 
+                    else if ((comando_act == command_counter - 1) && (filev[1][0] != '0')){
+                        /* Redirigir hacia la salida, file[1] como stdout */
+                        close(STDOUT_FILENO);
+                        int fd = open(filev[1], O_CREAT | O_RDWR, S_IRWXU);                          
+                    }
+                    if (filev[2][0] != '0'){
+                        /* Redirigir error, file[1] como stderr */
+                        close(STDERR_FILENO);
+                        int fd = open(filev[2], O_CREAT | O_RDWR, S_IRWXU);                          
+                    }
+
+                    /* TUBERÍAS */
+                    if (command_counter > 1){
+                        if (comando_act == 0){ /* primer comando - salida de pipe0 */
+                            close(pipe1[0]); 
+                            close(pipe1[1]);
+                            close(pipe0[0]);
+                            dup2(pipe0[1], STDOUT_FILENO); // stdout es ahora la escritura de la tubería
+                            close(pipe0[1]);
+                        } 
+                        else if (comando_act == command_counter - 1){ /* último comando - entrada de pipe */
+                            if ((comando_act % 2) != 0){ // impar - lee desde pipe0
+                                close(pipe1[0]); 
+                                close(pipe1[1]);
+                                close(pipe0[1]);
+                                dup2(pipe0[0], STDIN_FILENO); // stdin es ahora la lectura de la tubería
+                                close(pipe0[0]);
+                            } 
+                            else{ /* par - entrada de pipe1 */
+                                close(pipe0[0]); 
+                                close(pipe0[1]);
+                                close(pipe1[1]);
+                                dup2(pipe1[0], STDIN_FILENO);
+                                close(pipe1[0]);
+                            }
+                        } 
+                        else if ((comando_act % 2) != 0){ /* comando intermedio, impar - entrada/salida de tubería */
+                            close(pipe0[1]);
+                            close(pipe1[0]);
+                            dup2(pipe0[0], STDIN_FILENO);
+                            dup2(pipe1[1], STDOUT_FILENO);
+                        } 
+                        else{ /* comando intermedio, par - entrada/salida de tubería */
+                            close(pipe1[1]);
+                            close(pipe0[0]);
+                            dup2(pipe1[0], STDIN_FILENO); // como es par, tenemos que alternar para completar el bucle
+                            close(pipe1[0]);
+                            dup2(pipe0[1], STDOUT_FILENO);
+                            close(pipe0[1]);
+                        }
+                    }
+
+                    /* EJECUTAR EL COMANDO ACTUAL */
+                    /* COMANDOS INTERNOS */
+                if (strcmp(argvv[0][0],"myhistory")!=0 && strcmp(argvv[0][0],"mycalc")!=0 ){
+                    getCompleteCommand(argvv, comando_act);
+                    execvp(argvv[comando_act][0], argvv[comando_act]); // ejecutar el comando
+                    perror("Error en execvp\n");
+                    exit(0);
+                }
+                }
+                }
+            }
+        }
+    }
+    return 0;
+}
