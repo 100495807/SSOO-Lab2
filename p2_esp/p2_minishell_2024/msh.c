@@ -114,7 +114,7 @@ struct command
   int in_background;
 };
 
-int history_size = 2;
+int history_size = 20;
 struct command * history;
 int head = 0;
 int tail = 0;
@@ -297,12 +297,6 @@ void myhistory(char ***argvv, int in_background) {
 
 
 
-
-
-
-
-
-
 /* myhistory */
 
 
@@ -373,15 +367,20 @@ int main(int argc, char* argv[])
                 printf("Error: El número máximo de comandos es %d \n", MAX_COMMANDS);
             }
             else {
-                if (strcmp(argvv[0][0],"myhistory") != 0){
-                    if (contador > history_size) {
+                if (strcmp(argvv[0][0], "myhistory") != 0) {
+                    if (n_elem >= history_size) {
+                        // Liberar el primer comando almacenado
                         free_command(&history[0]);
+                        // Desplazar todos los comandos restantes una posición hacia arriba en el historial
+                        for (int i = 0; i < history_size - 1; i++) {
+                            history[i] = history[i + 1];
+                        }
+                        // Decrementar el número total de elementos en el historial
+                        n_elem--;
                     }
-                    store_command(argvv,filev,in_background,&history[contador]);
-                    contador++;
-                    if (n_elem < history_size){
-                        n_elem += 1;
-                    }
+                    // Almacenar el nuevo comando en la última posición del historial
+                    store_command(argvv, filev, in_background, &history[n_elem]);
+                    n_elem++;
                 }
                 if (strcmp(argvv[0][0], "mycalc") == 0){
                         /* ejecutar mycalc */
