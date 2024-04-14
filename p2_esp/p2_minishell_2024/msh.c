@@ -114,7 +114,7 @@ struct command
   int in_background;
 };
 
-int history_size = 20;
+int history_size = 2;
 struct command * history;
 int head = 0;
 int tail = 0;
@@ -200,18 +200,13 @@ void getCompleteCommand(char*** argvv, int num_command) {
 
 /* myhistory */
 void myhistory(char ***argvv, int in_background) {
-    int i; // Variable para el contador en los bucles
     if (argvv[0][1] == NULL) {
         // Mostrar el historial completo
-        if (n_elem > history_size) {
-            head = n_elem - 20;
-        }
         for (int i = 0; i < history_size; i++) {
             struct command cmd = history[i];
             if (cmd.num_commands > 0) {
                 fprintf(stderr, "%d ", i);
                 for (int j = 0; j < cmd.num_commands; j++) {
-                    n_elem = n_elem + 1;
                     for (int k = 0; k < cmd.args[j]; k++) {
                         fprintf(stderr, "%s ", cmd.argvv[j][k]);
                     }
@@ -222,36 +217,92 @@ void myhistory(char ***argvv, int in_background) {
                 fprintf(stderr, "\n");
             }
         }
-    } 
-    else {
+    } else {
         // Mostrar un comando específico del historial
-        int index = atoi(argvv[0][1]) - 1;
-        //store_command(argvv, filev, in_background, &history[contador]);
-        if (index + 1 < 0 || index >= history_size || index > n_elem) {
+        int index = atoi(argvv[0][1]);
+        printf("Valor de index: %d\n", index);
+        printf("Valor de n_elem: %d\n", n_elem);
+        if (index < 0 || index >= n_elem) {
             fprintf(stdout, "ERROR: Comando no encontrado\n");
-        } 
-        else {
-            fprintf(stderr, "Ejecutando el comando %d\n", index + 1);
-            struct command *cmd = &history[index + 1];
-            int pid;
-            pid = fork();
-            if (pid < 0) {
-                fprintf(stdout, "Error en fork\n");
-                exit(-1);
-            } else if (pid == 0) {
-                // Proceso hijo
-                char **argv = cmd->argvv[0];
-                execvp(argv[0], argv);
-                fprintf(stdout, "Error en el hijo\n");
-                exit(-1);
-            } else {
-                // Proceso padre
+        } else {
+            fprintf(stderr, "Ejecutando el comando %d\n", index);
+            struct command *cmd = &history[index];
+            int num_commands = cmd->num_commands;
+            int pipes[num_commands - 1][2]; // Array para almacenar los descriptores de archivo de las tuberías
+
+            // Crear tuberías para cada comando, excepto el último
+            for (int i = 0; i < num_commands - 1; i++) {
+                if (pipe(pipes[i]) == -1) {
+                    perror("Error al crear la tubería");
+                    exit(EXIT_FAILURE);
+                }
+            }
+
+            // Ejecutar cada comando y conectar las tuberías
+            for (int i = 0; i < num_commands; i++) {
+                int pid = fork();
+                if (pid == -1) {
+                    perror("Error en fork");
+                    exit(EXIT_FAILURE);
+                } else if (pid == 0) {
+                    // Proceso hijo
+                    if (i > 0) {
+                        // Redirigir la entrada estándar al extremo de lectura de la tubería anterior
+                        if (dup2(pipes[i - 1][0], STDIN_FILENO) == -1) {
+                            perror("Error al redirigir la entrada estándar");
+                            exit(EXIT_FAILURE);
+                        }
+                    }
+                    if (i < num_commands - 1) {
+                        // Redirigir la salida estándar al extremo de escritura de la tubería actual
+                        if (dup2(pipes[i][1], STDOUT_FILENO) == -1) {
+                            perror("Error al redirigir la salida estándar");
+                            exit(EXIT_FAILURE);
+                        }
+                    }
+
+                    // Cerrar los descriptores de archivo de las tuberías
+                    for (int j = 0; j < num_commands - 1; j++) {
+                        close(pipes[j][0]);
+                        close(pipes[j][1]);
+                    }
+
+                    // Comprobar si el comando es mycalc
+                    if (strcmp(cmd->argvv[i][0], "mycalc") == 0) {
+                        mycalc(cmd->argvv);  // Llamar a la función mycalc
+                    } else {
+                        // Ejecutar el comando con execvp
+                        execvp(cmd->argvv[i][0], cmd->argvv[i]);
+                        // Si execvp falla, imprimir un mensaje de error y salir
+                        perror("Error en execvp");
+                        exit(EXIT_FAILURE);
+                    }
+                }
+            }
+
+            // Cerrar descriptores de archivo no utilizados por el padre
+            for (int i = 0; i < num_commands - 1; i++) {
+                close(pipes[i][0]);
+                close(pipes[i][1]);
+            }
+
+            // Esperar a que todos los procesos hijos terminen
+            for (int i = 0; i < num_commands; i++) {
                 int status;
-                waitpid(pid, &status, 0);
+                wait(&status);
             }
         }
-    }    
+    }
 }
+
+
+
+
+
+
+
+
+
 /* myhistory */
 
 
@@ -328,6 +379,9 @@ int main(int argc, char* argv[])
                     }
                     store_command(argvv,filev,in_background,&history[contador]);
                     contador++;
+                    if (n_elem < history_size){
+                        n_elem += 1;
+                    }
                 }
                 if (strcmp(argvv[0][0], "mycalc") == 0){
                         /* ejecutar mycalc */
