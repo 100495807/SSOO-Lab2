@@ -20,7 +20,7 @@
 #include <unistd.h>
 #include <sys/wait.h>
 #include <signal.h>
-
+#include <ctype.h>
 #define MAX_COMMANDS 8
 // files in case of redirection
 char filev[3][64];
@@ -35,19 +35,21 @@ void siginthandler(int param)
 	exit(0);
 }
 
+int contador = 0;
 
 /* mycalc */
 void mycalc(char ***argvv) {
     // Verificar si el comando es mycalc
     if (strcmp(argvv[0][0], "mycalc") == 0) {
         // Verificar si se proporcionan los tres argumentos requeridos
-        if (argvv[0][1] != NULL && argvv[0][2] != NULL && argvv[0][3] != NULL) {
+        if (argvv[0][1] != NULL && argvv[0][2] != NULL && argvv[0][3] != NULL && argvv[0][4] == NULL) {
             // Obtener los operandos y el operador
             int op1 = atoi(argvv[0][1]);
             int op2 = atoi(argvv[0][3]);
             char *operator = argvv[0][2];
             int result;
             char buf[100];  // Buffer para almacenar el mensaje de salida
+
             // Realizar la operación según el operador
             if (strcmp(operator, "add") == 0) {
                 // Suma: sumar operandos y acumular en la variable de entorno "Acc"
@@ -65,15 +67,19 @@ void mycalc(char ***argvv) {
             else if (strcmp(operator, "mul") == 0) {
                 // Multiplicación: multiplicar operandos
                 result = op1 * op2;
-                // Crear el mensaje de salida
                 sprintf(buf, "[OK] %d * %d = %d\n", op1, op2, result);
             } 
             else if (strcmp(operator, "div") == 0) {
-                // División: calcular cociente y resto
-                int quotient = op1 / op2;
-                int remainder = op1 % op2;
-                // Crear el mensaje de salida
-                sprintf(buf, "[OK] %d / %d = %d; Resto %d\n", op1, op2, quotient, remainder);
+                // División: verificar si el divisor es cero
+                if (op2 != 0) {
+                    // Calcular cociente y resto
+                    int quotient = op1 / op2;
+                    int remainder = op1 % op2;
+                    sprintf(buf, "[OK] %d / %d = %d; Resto %d\n", op1, op2, quotient, remainder);
+                } else {
+                    // Manejar división entre cero
+                    sprintf(buf, "[ERROR] No se puede dividir entre 0\n");
+                }
             } 
             else {
                 // Operador no válido
@@ -81,7 +87,6 @@ void mycalc(char ***argvv) {
                 sprintf(buf, "[ERROR] La estructura del comando es mycalc <operando_1> <add/mul/div> <operando_2>\n");
                 printf("[ERROR] La estructura del comando es mycalc <operando_1> <add/mul/div> <operando_2>\n");
             }
-
             // Escribir el mensaje en la salida estándar de error
             if (write(2, buf, strlen(buf)) < strlen(buf)) {
                 perror("Error in write\n");
@@ -197,6 +202,7 @@ void getCompleteCommand(char*** argvv, int num_command) {
 		argv_execvp[i] = argvv[num_command][i];
 }
 
+
 /* myhistory */
 void myhistory(char ***argvv, int in_background) {
     if (argvv[0][1] == NULL) {
@@ -206,8 +212,8 @@ void myhistory(char ***argvv, int in_background) {
             if (cmd.num_commands > 0) {
                 fprintf(stdout, "%d ", i);
                 for (int j = 0; j < cmd.num_commands; j++) {
-                    for (int w = 0; w < cmd.args[j]; w++) {
-                        fprintf(stdout, "%s ", cmd.argvv[j][w]);
+                    for (int k = 0; k < cmd.args[j]; k++) {
+                        fprintf(stdout, "%s ", cmd.argvv[j][k]);
                     }
                     if (j < cmd.num_commands - 1) {
                         fprintf(stdout, "| ");
@@ -233,7 +239,10 @@ void myhistory(char ***argvv, int in_background) {
         int index = atoi(argvv[0][1]);
         if (index < 0 || index >= n_elem) {
             fprintf(stdout, "ERROR: Comando no encontrado\n");
-        } else {
+            }
+        else if (argvv[0][1][0] == '\0' || !isdigit(argvv[0][1][0])) {
+    		fprintf(stdout, "ERROR: El índice debe ser un número entero\n");
+	} else {
             fprintf(stdout, "Ejecutando el comando %d\n", index);
             struct command *cmd = &history[index];
             int num_commands = cmd->num_commands;
@@ -338,8 +347,8 @@ void myhistory(char ***argvv, int in_background) {
         }
     }
 }
-/* myhistory */
 
+/* myhistory */
 
 
 /**
@@ -433,7 +442,7 @@ int main(int argc, char* argv[])
                     // Manejar el comando "myhistory"
                     myhistory(argvv, in_background);
                 }
-
+                
                 else{
                     // PIPES
                 /* Configuración de tuberías */
@@ -476,7 +485,7 @@ int main(int argc, char* argv[])
                     }
                 } 
                 else { /* proceso hijo */
-
+                        
                     /* REDIRECCIÓN */
                     if ((comando_act == 0) && (filev[0][0] != '0')){
                         /* Redirigir desde la entrada, file[0] como stdin */
@@ -503,7 +512,6 @@ int main(int argc, char* argv[])
                             dup2(pipe0[1], STDOUT_FILENO); // stdout es ahora la escritura de la tubería
                             close(pipe0[1]);
                         } 
-
                         else if (comando_act == command_counter - 1){ /* último comando - entrada de pipe */
                             if ((comando_act % 2) != 0){ // impar - lee desde pipe0
                                 close(pipe1[0]); 
@@ -551,3 +559,4 @@ int main(int argc, char* argv[])
     }
     return 0;
 }
+
